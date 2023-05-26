@@ -1,0 +1,3 @@
+const GetSinglePayment = (req,res) =>{
+    
+}
