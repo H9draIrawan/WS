@@ -61,6 +61,30 @@ async function generateIDUser() {
   }
 }
 
+async function CekToken(req, res, next) {
+  const schema = Joi.string().required().empty().messages({
+    "any.required": "x-auth-token cannot be an empty field",
+    "string.empty": "x-auth-token is a required field",
+  });
+  try {
+    await schema.validateAsync(req.headers["x-auth-token"]);
+  } catch (err) {
+    return res.status(400).send({ message: err.message });
+  }
+
+  try {
+    const checking = jwt.verify(
+      req.headers["x-auth-token"],
+      process.env.JWT_Secret_Key
+    );
+    req.token = checking.id;
+    // console.log(req.token);
+  } catch (err) {
+    return res.status(400).send({ message: "Invalid JWT Token" });
+  }
+  next();
+}
+
 const RegisterUser = async (req, res) => {
   const { email, password, confirm_password, name } = req.body;
   const schema = Joi.object({
@@ -158,6 +182,7 @@ const LoginUser = async (req, res) => {
         email: data.email,
         name: data.name,
         apiKey: data.apiKey,
+        token: token,
       });
     } else {
       res.status(400).json({
@@ -171,17 +196,70 @@ const LoginUser = async (req, res) => {
   }
 };
 
-const TopupUser = (req, res) => {
-  // Implement the logic for topping up user balance
+const TopupSaldo = async (req, res) => {
+  const User = await db.users.findByPk(req.token);
+  const { saldo } = req.body;
+  const schema = Joi.number().min(100000).max(10000000).required().messages({
+    "any.required": "Topup saldo is a required field",
+    "number.min": "Topup saldo minimum balance Rp.100.000",
+    "number.max": "Topup saldo maximum balance Rp.10.000.000",
+  });
+
+  try {
+    await schema.validateAsync(req.body.saldo);
+  } catch (error) {
+    return res.status(400).send({ message: error.message });
+  }
+
+  User.saldo += saldo;
+  User.updatedAt = new Date();
+  User.save();
+  return res.status(200).send({ message: `Success Topup Rp.${saldo}` });
+};
+const TopupApihit = async (req, res) => {
+  const User = await db.users.findByPk(req.token);
+  const { apihit } = req.body;
+  const schema = Joi.number().min(1).max(1000).required().messages({
+    "any.required": "Topup apihit is a required field",
+    "number.min": "Topup apihit minimum balance 1",
+    "number.max": "Topup apihit maximum balance 1000",
+  });
+
+  try {
+    await schema.validateAsync(req.body.apihit);
+  } catch (error) {
+    return res.status(400).send({ message: error.message });
+  }
+
+  User.saldo -= apihit * 3200;
+  User.apiHit += apihit;
+  User.updatedAt = new Date();
+  if (User.saldo < 0)
+    return res.status(400).send({ message: "Saldo not enough" });
+  User.save();
+  return res.status(200).send({ message: `Success Topup ${apihit} Apihit` });
 };
 
-const CekSaldoser = (req, res) => {
-  // Implement the logic for checking user balance
+const CekSaldo = async (req, res) => {
+  const User = await db.users.findByPk(req.token);
+  return res.status(400).send({
+    message: `Remaining Saldo Rp.${User.saldo}`,
+  });
+};
+
+const CekApihit = async (req, res) => {
+  const User = await db.users.findByPk(req.token);
+  return res.status(400).send({
+    message: `Remaining Apihit ${User.apiHit}`,
+  });
 };
 
 module.exports = {
   RegisterUser,
   LoginUser,
-  TopupUser,
-  CekSaldoser,
+  TopupSaldo,
+  TopupApihit,
+  CekSaldo,
+  CekApihit,
+  CekToken,
 };
