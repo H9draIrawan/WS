@@ -16,13 +16,14 @@ module.exports = (sequelize, DataTypes) => {
       name: DataTypes.STRING,
       email: DataTypes.STRING,
       password: DataTypes.STRING,
-      saldo: DataTypes.NUMBER,
-      apiHit: DataTypes.NUMBER,
+      saldo: DataTypes.INTEGER,
+      apiHit: DataTypes.INTEGER,
       apiKey: DataTypes.STRING,
     },
     {
       sequelize,
-      modelName: "user",
+      modelName: "users",
+      freezeTableName: true,
     }
   );
   return user;
