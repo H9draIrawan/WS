@@ -1,7 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const invoiceController = require("../controller/controllerInvoice")
+const {
+  ListInvoices,
+  GetSingleInvoice,
+  CreateInvoice,
+  UpdateInvoice,
+  DeleteInvoice,
+  HitInvoice
+} = require("../controller/controllerInvoice");
 
-router.get("/",);
+router.post("/create",HitInvoice, CreateInvoice);
 
 module.exports = router;

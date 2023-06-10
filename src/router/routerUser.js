@@ -14,8 +14,8 @@ const {
 router.post("/register", RegisterUser);
 router.post("/login", LoginUser);
 
-router.get("/apihit", CekToken,CekApihit);
-router.get("/saldo", CekToken,CekSaldo);
+router.get("/apihit", CekToken, CekApihit);
+router.get("/saldo", CekToken, CekSaldo);
 
 router.put("/apihit/topup", CekToken, TopupApihit);
 router.put("/saldo/topup", CekToken, TopupSaldo);
