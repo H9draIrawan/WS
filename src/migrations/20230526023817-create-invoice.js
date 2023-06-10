@@ -5,34 +5,25 @@ module.exports = {
     await queryInterface.createTable("invoices", {
       id: {
         allowNull: false,
+        autoIncrement: true,
         primaryKey: true,
-        type: Sequelize.STRING,
+        type: Sequelize.INTEGER,
       },
       name: {
         allowNull: false,
         type: Sequelize.STRING,
       },
-      address: {
+      qty: {
         allowNull: false,
-        type: Sequelize.STRING,
+        type: Sequelize.INTEGER,
       },
-      seller: {
+      price: {
         allowNull: false,
-        type: Sequelize.STRING,
+        type: Sequelize.INTEGER,
       },
-      customer: {
+      total: {
         allowNull: false,
-        type: Sequelize.STRING,
-      },
-      userId: {
-        type: Sequelize.STRING,
-        allowNull: false,
-        references: {
-          model: "users",
-          key: "id",
-        },
-        onUpdate: "CASCADE",
-        onDelete: "CASCADE",
+        type: Sequelize.INTEGER,
       },
       createdAt: {
         allowNull: false,
@@ -42,17 +33,6 @@ module.exports = {
         allowNull: false,
         type: Sequelize.DATE,
       },
-    });
-    await queryInterface.addConstraint("invoices", {
-      fields: ["userId"],
-      type: "foreign key",
-      name: "fk_invoice_user",
-      references: {
-        table: "users",
-        field: "id",
-      },
-      onDelete: "CASCADE",
-      onUpdate: "CASCADE",
     });
   },
   async down(queryInterface, Sequelize) {

@@ -63,8 +63,8 @@ async function generateIDUser() {
 
 async function CekToken(req, res, next) {
   const schema = Joi.string().required().empty().messages({
-    "any.required": "x-auth-token is a required field",
-    "string.empty": "x-auth-token cannot be an empty field",
+    "any.required": "x-auth-token cannot be an empty field",
+    "string.empty": "x-auth-token is a required field",
   });
   try {
     await schema.validateAsync(req.headers["x-auth-token"]);
@@ -105,15 +105,6 @@ const RegisterUser = async (req, res) => {
     "string.email": "email is not valid",
     "any.only": "confirm password does not match with password",
   });
-
-  const twins = await db.users.findOne({
-    where: {
-      email,
-    },
-  });
-
-  if (twins)
-    return res.status(400).send({ message: "email already registered" });
 
   let hashPassword = bcrypt.hashSync(password, 12);
 
@@ -182,7 +173,7 @@ const LoginUser = async (req, res) => {
         },
         process.env.JWT_Secret_Key,
         {
-          expiresIn: "10m",
+          expiresIn: "5m",
         }
       );
       console.log(token);
@@ -225,7 +216,6 @@ const TopupSaldo = async (req, res) => {
   User.save();
   return res.status(200).send({ message: `Success Topup Rp.${saldo}` });
 };
-
 const TopupApihit = async (req, res) => {
   const User = await db.users.findByPk(req.token);
   const { apihit } = req.body;
