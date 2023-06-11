@@ -1,10 +1,12 @@
 const express = require("express");
 const router = express.Router();
 
-const invoiceRouter = require("./routerInvoice");
 const userRouter = require("./routerUser");
+const invoiceRouter = require("./routerInvoice");
+const itemRouter = require("./routerItem");
 
-router.use("/invoice", invoiceRouter);
 router.use("/users", userRouter);
+router.use("/invoices", invoiceRouter);
+router.use("/items", itemRouter);
 
 module.exports = router;
