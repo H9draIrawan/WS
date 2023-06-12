@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const Nanoid = require("nanoid");
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv").config();
+const nodemailer = require("nodemailer");
 
 const db = require("../models/index");
 
@@ -143,8 +144,6 @@ const RegisterUser = async (req, res) => {
     });
   }
 };
-
-let isiJWT = "";
 
 const LoginUser = async (req, res) => {
   const { email, password } = req.body;
@@ -333,12 +332,17 @@ const cekStatus = async (order_id) => {
       gross_amount = response.data.gross_amount;
     })
     .catch((error) => {
-      console.log(error);
+      error;
     });
 };
 
 const webhook = async (req, res) => {
+  console.log("Masuk Webhook");
   await cekStatus(order_id);
+
+  if (status == "pending") {
+    console.log("Masih Pending");
+  }
 
   const T = await db.Transactions.findOne({
     where: {
@@ -350,9 +354,17 @@ const webhook = async (req, res) => {
     if (status == "settlement") {
       const User = await db.users.findOne({
         where: {
-          user_id: "user-n9ntn",
+          user_id: T.user_id,
         },
       });
+
+      // console.log("User.saldo: " + User.saldo + " || " + typeof User.saldo);
+      // console.log(
+      //   "gross_amount: " + gross_amount + " || " + typeof gross_amount
+      // );
+      // console.log("User.saldo + gross_amount: " + User.saldo + gross_amount);
+
+      // gross_amount = parseInt(gross_amount);
 
       const u = await db.users.update(
         {
@@ -360,7 +372,7 @@ const webhook = async (req, res) => {
         },
         {
           where: {
-            user_id: "user-n9ntn",
+            user_id: T.user_id,
           },
         }
       );
@@ -381,6 +393,7 @@ const webhook = async (req, res) => {
       });
     }
   } else {
+    // console.log("Masuk Else");
     return res.status(400).send({
       message: `Topup saldo Rp.${gross_amount} Failed`,
     });
