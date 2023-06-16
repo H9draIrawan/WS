@@ -10,6 +10,7 @@ const {
   CekSaldo,
   CekToken,
   webhook,
+  cekAPILayer,
 } = require("../controller/controllerUser");
 
 router.post("/register", RegisterUser);
@@ -22,5 +23,7 @@ router.put("/saldo/topup", CekToken, TopupSaldo);
 router.put("/apihit/topup", CekToken, TopupApihit);
 
 router.post("/webhook", webhook);
+
+router.get("/", cekAPILayer);
 
 module.exports = router;

@@ -227,7 +227,7 @@ const TopupSaldo = async (req, res) => {
 
   if (decoded.email !== User.email) {
     return res.status(400).json({
-      message: "Invalid JWT Token",
+      message: "API Key or Token is not valid",
     });
   }
 
@@ -243,6 +243,18 @@ const TopupSaldo = async (req, res) => {
     let count = 1;
     let date = new Date().toLocaleDateString().split("/").join("");
     let uniqueSuffix = Math.floor(10000 + Math.random() * 90000); // 5 digit angka random
+
+    const response = await Axios.get(
+      `https://api.apilayer.com/tax_data/price?amount=${saldo}&country=ID`,
+      {
+        headers: {
+          apiKey: "s8nwK4ynm1CBhXe9ham5YyKLf30M8RwQ",
+        },
+      }
+    );
+
+    const incl_vat = response.data.price_incl_vat;
+
     const transaction_details = {
       order_id: `order-${date}-${uniqueSuffix}`,
       gross_amount: saldo,
@@ -271,9 +283,14 @@ const TopupSaldo = async (req, res) => {
       amount: saldo,
     });
 
+    const selisih = parseInt(incl_vat) - parseInt(saldo);
+
     return res.status(200).send({
       order_id: transaction.order_id,
       "BCA Virtual Account Number": va_number,
+      Saldo: parseInt(saldo),
+      "Tax 11%": selisih,
+      Total: parseInt(incl_vat),
     });
   } catch (error) {
     return res.status(400).send({ message: error.message });
@@ -300,17 +317,120 @@ const TopupApihit = async (req, res) => {
   //   return res.status(400).send({ message: "Saldo not enough" });
   // User.save();
   // return res.status(200).send({ message: `Success Topup ${apihit} Apihit` });
+
+  const apiKey = req.headers["x-api-key"];
+
+  const User = await db.users.findOne({
+    where: {
+      apiKey: apiKey,
+    },
+  });
+
+  if (!User) {
+    return res.status(400).json({
+      message: "Invalid API Key",
+    });
+  }
+
+  const decoded = jwt.verify(
+    req.headers["x-auth-token"],
+    process.env.JWT_Secret_Key
+  );
+
+  if (decoded.email !== User.email) {
+    return res.status(400).json({
+      message: "API Key or Token is not valid",
+    });
+  }
+
+  const { apihit } = req.body;
+
+  const schema = Joi.number().label("Apihit").min(1).required().messages({
+    "any.required": "Apihit is a required field",
+    "number.min": "Apihit minimum balance 1",
+  });
+
+  try {
+    await schema.validateAsync(req.body.apihit);
+    User.saldo -= apihit * 3200;
+    User.apiHit += apihit;
+    User.updatedAt = new Date();
+    if (User.saldo < 0)
+      return res.status(400).send({ message: "Saldo not enough" });
+    User.save();
+    return res.status(200).send({ message: `Success Topup ${apihit} Apihit` });
+  } catch (error) {
+    return res.status(400).send({ message: error.message });
+  }
 };
 
 const CekSaldo = async (req, res) => {
-  const User = await db.users.findByPk(req.token);
+  // const User = await db.users.findByPk(req.token);
+  // return res.status(400).send({
+  //   message: `Remaining Saldo Rp.${User.saldo}`,
+  // });
+
+  const apiKey = req.headers["x-api-key"];
+
+  const User = await db.users.findOne({
+    where: {
+      apiKey: apiKey,
+    },
+  });
+
+  if (!User) {
+    return res.status(400).json({
+      message: "Invalid API Key",
+    });
+  }
+
+  const decoded = jwt.verify(
+    req.headers["x-auth-token"],
+    process.env.JWT_Secret_Key
+  );
+
+  if (decoded.email !== User.email) {
+    return res.status(400).json({
+      message: "API Key or Token is not valid",
+    });
+  }
+
   return res.status(400).send({
     message: `Remaining Saldo Rp.${User.saldo}`,
   });
 };
 
 const CekApihit = async (req, res) => {
-  const User = await db.users.findByPk(req.token);
+  // const User = await db.users.findByPk(req.token);
+  // return res.status(400).send({
+  //   message: `Remaining Apihit ${User.apiHit}`,
+  // });
+
+  const apiKey = req.headers["x-api-key"];
+
+  const User = await db.users.findOne({
+    where: {
+      apiKey: apiKey,
+    },
+  });
+
+  if (!User) {
+    return res.status(400).json({
+      message: "Invalid API Key",
+    });
+  }
+
+  const decoded = jwt.verify(
+    req.headers["x-auth-token"],
+    process.env.JWT_Secret_Key
+  );
+
+  if (decoded.email !== User.email) {
+    return res.status(400).json({
+      message: "API Key or Token is not valid",
+    });
+  }
+
   return res.status(400).send({
     message: `Remaining Apihit ${User.apiHit}`,
   });
@@ -400,6 +520,23 @@ const webhook = async (req, res) => {
   }
 };
 
+const cekAPILayer = async (req, res) => {
+  const response = await Axios.get(
+    "https://api.apilayer.com/tax_data/price?amount=150000&country=ID",
+    {
+      headers: {
+        apiKey: "s8nwK4ynm1CBhXe9ham5YyKLf30M8RwQ",
+      },
+    }
+  );
+
+  console.log(response.data);
+
+  return res.status(200).send({
+    message: response.data,
+  });
+};
+
 module.exports = {
   RegisterUser,
   LoginUser,
@@ -409,4 +546,5 @@ module.exports = {
   CekApihit,
   CekToken,
   webhook,
+  cekAPILayer,
 };
