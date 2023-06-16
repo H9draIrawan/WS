@@ -3,9 +3,19 @@ const bcrypt = require("bcrypt");
 const Nanoid = require("nanoid");
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv").config();
+const nodemailer = require("nodemailer");
 
 const db = require("../models/index");
 
+const midtransClient = require("midtrans-client");
+const Axios = require("axios");
+
+const coreApi = new midtransClient.CoreApi({
+  isProduction: false,
+  serverKey: process.env.MIDTRANS_SERVER_KEY,
+  clientKey: process.env.MIDTRANS_CLIENT_KEY,
+});
+let order_id = "";
 async function generateAPIKey() {
   const apiKey = Nanoid.nanoid(10);
   const check = await db.users.findOne({
@@ -78,10 +88,35 @@ async function CekToken(req, res, next) {
       process.env.JWT_Secret_Key
     );
     req.token = checking.id;
-    // console.log(req.token);
   } catch (err) {
     return res.status(400).send({ message: "Invalid JWT Token" });
   }
+  next();
+}
+
+async function CekApiKey(req, res, next) {
+  const schema = Joi.string().required().empty().messages({
+    "any.required": "x-api-key is a required field",
+    "string.empty": "x-api-key cannot be an empty field",
+  });
+  try {
+    await schema.validateAsync(req.headers["x-api-key"]);
+  } catch (err) {
+    return res.status(400).send({ message: err.message });
+  }
+
+  const User = await db.users.findOne({
+    where: {
+      apiKey: apiKey,
+    },
+  });
+
+  if (!User) {
+    return res.status(400).json({
+      message: "Invalid API Key",
+    });
+  }
+  req.user = User;
   next();
 }
 
@@ -105,15 +140,6 @@ const RegisterUser = async (req, res) => {
     "string.email": "email is not valid",
     "any.only": "confirm password does not match with password",
   });
-
-  const twins = await db.users.findOne({
-    where: {
-      email,
-    },
-  });
-
-  if (twins)
-    return res.status(400).send({ message: "email already registered" });
 
   let hashPassword = bcrypt.hashSync(password, 12);
 
@@ -139,10 +165,8 @@ const RegisterUser = async (req, res) => {
       apiKey: data.apiKey,
     });
   } catch (error) {
-    const errorMessage = error.details[0]?.message || "Validation error";
-    const cleanedError = errorMessage.replace(/"/g, "");
-    res.status(400).json({
-      message: cleanedError,
+    return res.status(400).json({
+      message: error.message,
     });
   }
 };
@@ -156,7 +180,7 @@ const LoginUser = async (req, res) => {
       .label("Email")
       .external(emailIsNotExist)
       .required(),
-    password: Joi.string().min(6).label("Password").required(),
+    password: Joi.string().label("Password").required(),
   }).messages({
     "string.base": "should be a type of 'text'",
     "string.empty": "cannot be an empty field",
@@ -169,7 +193,7 @@ const LoginUser = async (req, res) => {
 
     const data = await db.users.findOne({
       where: {
-        email,
+        email: email,
       },
     });
     const checkPassword = bcrypt.compareSync(password, data.password);
@@ -182,10 +206,10 @@ const LoginUser = async (req, res) => {
         },
         process.env.JWT_Secret_Key,
         {
-          expiresIn: "10m",
+          expiresIn: "1d",
         }
       );
-      console.log(token);
+
       res.status(200).json({
         message: "Login Success",
         email: data.email,
@@ -206,54 +230,86 @@ const LoginUser = async (req, res) => {
 };
 
 const TopupSaldo = async (req, res) => {
-  const User = await db.users.findByPk(req.token);
+  const User = req.user
   const { saldo } = req.body;
   const schema = Joi.number().min(100000).max(10000000).required().messages({
-    "any.required": "Topup saldo is a required field",
+    "any.required": "saldo is a required field",
     "number.min": "Topup saldo minimum balance Rp.100.000",
     "number.max": "Topup saldo maximum balance Rp.10.000.000",
   });
 
   try {
     await schema.validateAsync(req.body.saldo);
+    let date = new Date().toLocaleDateString().split("/").join("");
+    let uniqueSuffix = Math.floor(10000 + Math.random() * 90000); // 5 digit angka random
+    const transaction_details = {
+      order_id: `order-${date}-${uniqueSuffix}`,
+      gross_amount: saldo,
+    };
+
+    const transaction = await coreApi.charge({
+      payment_type: "bank_transfer",
+      bank_transfer: {
+        bank: "bca",
+      },
+      customer_details: {
+        email: User.email,
+      },
+      transaction_details,
+    });
+
+    const va_number = transaction.va_numbers[0].va_number;
+
+    order_id = transaction.order_id;
+
+    const T = await db.transactions.create({
+      id: order_id,
+      userId: User.id,
+      payment_status: 0,
+      amount: saldo,
+    });
+
+    return res.status(200).send({
+      order_id: transaction.order_id,
+      "BCA Virtual Account Number": va_number,
+    });
   } catch (error) {
     return res.status(400).send({ message: error.message });
   }
-
-  User.saldo += saldo;
-  User.updatedAt = new Date();
-  User.save();
-  return res.status(200).send({ message: `Success Topup Rp.${saldo}` });
 };
 
 const TopupApihit = async (req, res) => {
-  const User = await db.users.findByPk(req.token);
-  const { apihit } = req.body;
-  const schema = Joi.number().min(1).max(1000).required().messages({
-    "any.required": "Topup apihit is a required field",
-    "number.min": "Topup apihit minimum balance 1",
-    "number.max": "Topup apihit maximum balance 1000",
-  });
-
-  try {
-    await schema.validateAsync(req.body.apihit);
-  } catch (error) {
-    return res.status(400).send({ message: error.message });
-  }
-
-  User.saldo -= apihit * 3200;
-  User.apiHit += apihit;
-  User.updatedAt = new Date();
-  if (User.saldo < 0)
-    return res.status(400).send({ message: "Saldo not enough" });
-  User.save();
-  return res.status(200).send({ message: `Success Topup ${apihit} Apihit` });
+  // const User = await db.users.findByPk(req.token);
+  // const { apihit } = req.body;
+  // const schema = Joi.number().min(1).max(1000).required().messages({
+  //   "any.required": "Topup apihit is a required field",
+  //   "number.min": "Topup apihit minimum balance 1",
+  //   "number.max": "Topup apihit maximum balance 1000",
+  // });
+  // try {
+  //   await schema.validateAsync(req.body.apihit);
+  // } catch (error) {
+  //   return res.status(400).send({ message: error.message });
+  // }
+  // User.saldo -= apihit * 3200;
+  // User.apiHit += apihit;
+  // User.updatedAt = new Date();
+  // if (User.saldo < 0)
+  //   return res.status(400).send({ message: "Saldo not enough" });
+  // User.save();
+  // return res.status(200).send({ message: `Success Topup ${apihit} Apihit` });
 };
 
 const CekSaldo = async (req, res) => {
   const User = await db.users.findByPk(req.token);
+  const amount = User.saldo;
+  const formattedAmount = amount.toLocaleString("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    currencyDisplay: "symbol",
+  });
   return res.status(400).send({
-    message: `Remaining Saldo Rp.${User.saldo}`,
+    message: `Remaining Saldo ${formattedAmount}`,
   });
 };
 
@@ -264,6 +320,90 @@ const CekApihit = async (req, res) => {
   });
 };
 
+let status = "";
+let gross_amount = 0;
+const cekStatus = async (order_id) => {
+  await Axios.get(`https://api.sandbox.midtrans.com/v2/${order_id}/status`, {
+    headers: {
+      Accept: "application/json",
+      authorization:
+        "Basic U0ItTWlkLXNlcnZlci1xN2FNTEpoT1JPN2hvbUV1SFBTYTVyWUM6",
+    },
+  })
+
+    .then((response) => {
+      status = response.data.transaction_status;
+      gross_amount = response.data.gross_amount;
+    })
+    .catch((error) => {
+      error;
+    });
+};
+
+const webhook = async (req, res) => {
+  console.log("Masuk Webhook");
+  await cekStatus(order_id);
+
+  if (status == "pending") {
+    console.log("Masih Pending");
+  }
+
+  const T = await db.Transactions.findOne({
+    where: {
+      id: order_id,
+    },
+  });
+
+  if (T.payment_status == 0) {
+    if (status == "settlement") {
+      const User = await db.users.findOne({
+        where: {
+          id: T.user_id,
+        },
+      });
+
+      // console.log("User.saldo: " + User.saldo + " || " + typeof User.saldo);
+      // console.log(
+      //   "gross_amount: " + gross_amount + " || " + typeof gross_amount
+      // );
+      // console.log("User.saldo + gross_amount: " + User.saldo + gross_amount);
+
+      // gross_amount = parseInt(gross_amount);
+
+      const u = await db.users.update(
+        {
+          saldo: User.saldo + gross_amount,
+        },
+        {
+          where: {
+            id: T.user_id,
+          },
+        }
+      );
+
+      const t = await db.Transactions.update(
+        {
+          payment_status: 1,
+        },
+        {
+          where: {
+            id: order_id,
+          },
+        }
+      );
+
+      return res.status(200).send({
+        message: `Topup saldo Rp.${gross_amount} Success`,
+      });
+    }
+  } else {
+    // console.log("Masuk Else");
+    return res.status(400).send({
+      message: `Topup saldo Rp.${gross_amount} Failed`,
+    });
+  }
+};
+
 module.exports = {
   RegisterUser,
   LoginUser,
@@ -272,4 +412,5 @@ module.exports = {
   CekSaldo,
   CekApihit,
   CekToken,
+  webhook,
 };

@@ -15,6 +15,7 @@ module.exports = (sequelize, DataTypes) => {
   Invoice.init(
     {
       name: DataTypes.STRING,
+      logo: DataTypes.STRING,
       seller: DataTypes.STRING,
       customer: DataTypes.STRING,
       address: DataTypes.STRING,

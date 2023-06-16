@@ -1,5 +1,6 @@
 const { Op } = require("sequelize");
 const Joi = require("joi");
+const jwt = require("jsonwebtoken")
 const Nanoid = require("nanoid");
 
 const db = require("../models/index");
@@ -25,12 +26,12 @@ async function HitItem(req, res, next) {
     "string.empty": "x-auth-token cannot be an empty field",
   });
   const CekApiKey = Joi.string().empty().required().messages({
-    "any.required": "apiKey is a required field",
-    "string.empty": "apiKey cannot be an empty field",
+    "any.required": "x-api-key is a required field",
+    "string.empty": "x-api-key cannot be an empty field",
   });
   try {
     await CekLogin.validateAsync(req.header("x-auth-token"));
-    await CekApiKey.validateAsync(req.header("apiKey"));
+    await CekApiKey.validateAsync(req.header("x-api-key"));
   } catch (err) {
     return res.status(400).send({ message: err });
   }
@@ -44,14 +45,14 @@ async function HitItem(req, res, next) {
     return res.status(400).send({ message: "Invalid JWT Token" });
   }
 
-  const apiKey = req.header("apiKey");
+  const apiKey = req.header("x-api-key");
   const User = await db.users.findOne({
     where: {
       apiKey,
     },
   });
 
-  if (!User) return res.status(404).send({ message: "apiKey not found" });
+  if (!User) return res.status(404).send({ message: "x-api-key not found" });
   if (User.apiHit <= 0)
     return res.status(404).send({ message: "apiHit not enough" });
 
