@@ -434,8 +434,7 @@ const cekStatus = async (order_id) => {
   await Axios.get(`https://api.sandbox.midtrans.com/v2/${order_id}/status`, {
     headers: {
       Accept: "application/json",
-      authorization:
-        `Basic ${btoa(process.env.MIDTRANS_SERVER_KEY)}`,
+      authorization: `Basic ${btoa(process.env.MIDTRANS_SERVER_KEY)}`,
     },
   })
     .then((response) => {
@@ -444,7 +443,7 @@ const cekStatus = async (order_id) => {
       gross_amount = response.data.gross_amount;
     })
     .catch((error) => {
-      console.log(error)
+      console.log(error);
     });
 };
 

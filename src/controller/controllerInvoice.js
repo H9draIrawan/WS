@@ -110,7 +110,7 @@ const GetSingleInvoice = async (req, res) => {
     seller: Invoice.seller,
     customer: Invoice.customer,
     address: Invoice.address,
-    items : Invoice.items
+    items: Invoice.items,
   });
 };
 const CreateInvoice = async (req, res) => {
@@ -343,7 +343,7 @@ const PrintInvoice = async (req, res) => {
   let Amount = 0;
   Item.forEach((element, idx) => {
     const newRow = [
-      idx+1,
+      idx + 1,
       element.id,
       element.name,
       element.qty,
@@ -354,10 +354,9 @@ const PrintInvoice = async (req, res) => {
     Amount += element.qty * element.price;
   });
 
-  const apiKey = "Yg6TfqLwrgXoXt6BQvTjv6zOQUgmghSr";
   const url = `https://api.apilayer.com/tax_data/price?amount=${Amount}&country=ID`;
   const headers = {
-    apikey: apiKey,
+    apikey: process.env.APILayerTax,
   };
   let { PPn, Result } = 0;
   await axios

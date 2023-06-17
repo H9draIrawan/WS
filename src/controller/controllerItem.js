@@ -62,7 +62,7 @@ async function HitItem(req, res, next) {
 
 const Additem = async (req, res) => {
   const id = req.params.invoiceId;
-  const Invoice = await db.invoices.findByPk(id)
+  const Invoice = await db.invoices.findByPk(id);
   if (!Invoice) return res.status(400).send({ message: "Invalid invoiceId" });
 
   const temp = req.body;
