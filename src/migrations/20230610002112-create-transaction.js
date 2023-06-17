@@ -2,31 +2,17 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("invoices", {
+    await queryInterface.createTable("transactions", {
       id: {
         allowNull: false,
         primaryKey: true,
         type: Sequelize.STRING,
       },
-      name: {
-        allowNull: false,
-        type: Sequelize.STRING,
+      amount: {
+        type: Sequelize.INTEGER,
       },
-      logo: {
-        allowNull: false,
-        type: Sequelize.STRING,
-      },
-      address: {
-        allowNull: false,
-        type: Sequelize.STRING,
-      },
-      seller: {
-        allowNull: false,
-        type: Sequelize.STRING,
-      },
-      customer: {
-        allowNull: false,
-        type: Sequelize.STRING,
+      payment_status: {
+        type: Sequelize.INTEGER,
       },
       userId: {
         type: Sequelize.STRING,
@@ -47,10 +33,10 @@ module.exports = {
         type: Sequelize.DATE,
       },
     });
-    await queryInterface.addConstraint("invoices", {
+    await queryInterface.addConstraint("transactions", {
       fields: ["userId"],
       type: "foreign key",
-      name: "fk_invoice_user",
+      name: "fk_transaction_user",
       references: {
         table: "users",
         field: "id",
@@ -60,6 +46,6 @@ module.exports = {
     });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("invoices");
+    await queryInterface.dropTable("transactions");
   },
 };

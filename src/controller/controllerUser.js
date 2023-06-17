@@ -71,29 +71,6 @@ async function generateIDUser() {
   }
 }
 
-async function CekToken(req, res, next) {
-  const schema = Joi.string().required().empty().messages({
-    "any.required": "x-auth-token cannot be an empty field",
-    "string.empty": "x-auth-token is a required field",
-  });
-  try {
-    await schema.validateAsync(req.headers["x-auth-token"]);
-  } catch (err) {
-    return res.status(400).send({ message: err.message });
-  }
-
-  try {
-    const checking = jwt.verify(
-      req.headers["x-auth-token"],
-      process.env.JWT_Secret_Key
-    );
-    req.token = checking.id;
-  } catch (err) {
-    return res.status(400).send({ message: "Invalid JWT Token" });
-  }
-  next();
-}
-
 const RegisterUser = async (req, res) => {
   const { email, password, confirm_password, name } = req.body;
   const schema = Joi.object({
@@ -123,7 +100,7 @@ const RegisterUser = async (req, res) => {
   try {
     await schema.validateAsync(req.body);
     const data = await db.users.create({
-      user_id: id,
+      id: id,
       email,
       password: hashPassword,
       name,
@@ -175,7 +152,7 @@ const LoginUser = async (req, res) => {
     if (checkPassword) {
       const token = jwt.sign(
         {
-          id: data.user_id,
+          id: data.id,
           email: data.email,
         },
         process.env.JWT_Secret_Key,
@@ -206,6 +183,17 @@ const LoginUser = async (req, res) => {
 let order_id = "";
 
 const TopupSaldo = async (req, res) => {
+  const validation = Joi.string().required().empty().messages({
+    "any.required": "x-auth-token is a required field",
+    "string.empty": "x-auth-token cannot be an empty field",
+  });
+  try {
+    await validation.validateAsync(req.headers["x-auth-token"]);
+    await validation.validateAsync(req.headers["x-api-key"]);
+  } catch (err) {
+    return res.status(400).send({ message: err.message });
+  }
+
   const apiKey = req.headers["x-api-key"];
 
   const User = await db.users.findOne({
@@ -236,6 +224,7 @@ const TopupSaldo = async (req, res) => {
     "any.required": "saldo is a required field",
     "number.min": "Topup saldo minimum balance Rp.100.000",
     "number.max": "Topup saldo maximum balance Rp.10.000.000",
+    "number.base": "Topup saldo must number",
   });
 
   try {
@@ -248,7 +237,7 @@ const TopupSaldo = async (req, res) => {
       `https://api.apilayer.com/tax_data/price?amount=${saldo}&country=ID`,
       {
         headers: {
-          apiKey: "s8nwK4ynm1CBhXe9ham5YyKLf30M8RwQ",
+          apiKey: process.env.APILayerTax,
         },
       }
     );
@@ -275,10 +264,9 @@ const TopupSaldo = async (req, res) => {
 
     order_id = transaction.order_id;
 
-    const T = await db.Transactions.create({
-      id_transaction: order_id,
-      user_id: User.user_id,
-      transaction_date: new Date(),
+    const T = await db.transactions.create({
+      id: order_id,
+      userId: User.id,
       payment_status: 0,
       amount: saldo,
     });
@@ -298,25 +286,16 @@ const TopupSaldo = async (req, res) => {
 };
 
 const TopupApihit = async (req, res) => {
-  // const User = await db.users.findByPk(req.token);
-  // const { apihit } = req.body;
-  // const schema = Joi.number().min(1).max(1000).required().messages({
-  //   "any.required": "Topup apihit is a required field",
-  //   "number.min": "Topup apihit minimum balance 1",
-  //   "number.max": "Topup apihit maximum balance 1000",
-  // });
-  // try {
-  //   await schema.validateAsync(req.body.apihit);
-  // } catch (error) {
-  //   return res.status(400).send({ message: error.message });
-  // }
-  // User.saldo -= apihit * 3200;
-  // User.apiHit += apihit;
-  // User.updatedAt = new Date();
-  // if (User.saldo < 0)
-  //   return res.status(400).send({ message: "Saldo not enough" });
-  // User.save();
-  // return res.status(200).send({ message: `Success Topup ${apihit} Apihit` });
+  const validation = Joi.string().required().empty().messages({
+    "any.required": "x-auth-token is a required field",
+    "string.empty": "x-auth-token cannot be an empty field",
+  });
+  try {
+    await validation.validateAsync(req.headers["x-auth-token"]);
+    await validation.validateAsync(req.headers["x-api-key"]);
+  } catch (err) {
+    return res.status(400).send({ message: err.message });
+  }
 
   const apiKey = req.headers["x-api-key"];
 
@@ -348,6 +327,7 @@ const TopupApihit = async (req, res) => {
   const schema = Joi.number().label("Apihit").min(1).required().messages({
     "any.required": "Apihit is a required field",
     "number.min": "Apihit minimum balance 1",
+    "number.base": "Apihit must number",
   });
 
   try {
@@ -365,10 +345,16 @@ const TopupApihit = async (req, res) => {
 };
 
 const CekSaldo = async (req, res) => {
-  // const User = await db.users.findByPk(req.token);
-  // return res.status(400).send({
-  //   message: `Remaining Saldo Rp.${User.saldo}`,
-  // });
+  const validation = Joi.string().required().empty().messages({
+    "any.required": "x-auth-token is a required field",
+    "string.empty": "x-auth-token cannot be an empty field",
+  });
+  try {
+    await validation.validateAsync(req.headers["x-auth-token"]);
+    await validation.validateAsync(req.headers["x-api-key"]);
+  } catch (err) {
+    return res.status(400).send({ message: err.message });
+  }
 
   const apiKey = req.headers["x-api-key"];
 
@@ -401,10 +387,16 @@ const CekSaldo = async (req, res) => {
 };
 
 const CekApihit = async (req, res) => {
-  // const User = await db.users.findByPk(req.token);
-  // return res.status(400).send({
-  //   message: `Remaining Apihit ${User.apiHit}`,
-  // });
+  const validation = Joi.string().required().empty().messages({
+    "any.required": "x-auth-token is a required field",
+    "string.empty": "x-auth-token cannot be an empty field",
+  });
+  try {
+    await validation.validateAsync(req.headers["x-auth-token"]);
+    await validation.validateAsync(req.headers["x-api-key"]);
+  } catch (err) {
+    return res.status(400).send({ message: err.message });
+  }
 
   const apiKey = req.headers["x-api-key"];
 
@@ -443,20 +435,20 @@ const cekStatus = async (order_id) => {
     headers: {
       Accept: "application/json",
       authorization:
-        "Basic U0ItTWlkLXNlcnZlci1xN2FNTEpoT1JPN2hvbUV1SFBTYTVyWUM6",
+        `Basic ${btoa(process.env.MIDTRANS_SERVER_KEY)}`,
     },
   })
-
     .then((response) => {
+      console.log(status, gross_amount);
       status = response.data.transaction_status;
       gross_amount = response.data.gross_amount;
     })
     .catch((error) => {
-      error;
+      console.log(error)
     });
 };
 
-const webhook = async (req, res) => {
+const Webhook = async (req, res) => {
   console.log("Masuk Webhook");
   await cekStatus(order_id);
 
@@ -464,9 +456,9 @@ const webhook = async (req, res) => {
     console.log("Masih Pending");
   }
 
-  const T = await db.Transactions.findOne({
+  const T = await db.transactions.findOne({
     where: {
-      id_transaction: order_id,
+      id: order_id,
     },
   });
 
@@ -474,7 +466,7 @@ const webhook = async (req, res) => {
     if (status == "settlement") {
       const User = await db.users.findOne({
         where: {
-          user_id: T.user_id,
+          id: T.userId,
         },
       });
 
@@ -492,18 +484,18 @@ const webhook = async (req, res) => {
         },
         {
           where: {
-            user_id: T.user_id,
+            id: T.userId,
           },
         }
       );
 
-      const t = await db.Transactions.update(
+      const t = await db.transactions.update(
         {
           payment_status: 1,
         },
         {
           where: {
-            id_transaction: order_id,
+            id: order_id,
           },
         }
       );
@@ -525,7 +517,7 @@ const cekAPILayer = async (req, res) => {
     "https://api.apilayer.com/tax_data/price?amount=150000&country=ID",
     {
       headers: {
-        apiKey: "s8nwK4ynm1CBhXe9ham5YyKLf30M8RwQ",
+        apiKey: process.env.APILayerTax,
       },
     }
   );
@@ -544,7 +536,6 @@ module.exports = {
   TopupApihit,
   CekSaldo,
   CekApihit,
-  CekToken,
-  webhook,
+  Webhook,
   cekAPILayer,
 };

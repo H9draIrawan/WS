@@ -2,7 +2,7 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable("users", {
+    await queryInterface.createTable("items", {
       id: {
         allowNull: false,
         primaryKey: true,
@@ -11,21 +11,21 @@ module.exports = {
       name: {
         type: Sequelize.STRING,
       },
-      email: {
-        type: Sequelize.STRING,
-        unique: true,
-      },
-      password: {
-        type: Sequelize.STRING,
-      },
-      saldo: {
+      qty: {
         type: Sequelize.INTEGER,
       },
-      apiHit: {
+      price: {
         type: Sequelize.INTEGER,
       },
-      apiKey: {
+      invoiceId: {
         type: Sequelize.STRING,
+        allowNull: false,
+        references: {
+          model: "invoices",
+          key: "id",
+        },
+        onUpdate: "CASCADE",
+        onDelete: "CASCADE",
       },
       createdAt: {
         allowNull: false,
@@ -36,8 +36,19 @@ module.exports = {
         type: Sequelize.DATE,
       },
     });
+    await queryInterface.addConstraint("items", {
+      fields: ["invoiceId"],
+      type: "foreign key",
+      name: "fk_item_invoice",
+      references: {
+        table: "invoices",
+        field: "id",
+      },
+      onDelete: "CASCADE",
+      onUpdate: "CASCADE",
+    });
   },
   async down(queryInterface, Sequelize) {
-    await queryInterface.dropTable("users");
+    await queryInterface.dropTable("items");
   },
 };

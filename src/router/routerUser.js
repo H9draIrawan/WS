@@ -8,21 +8,20 @@ const {
   TopupSaldo,
   CekApihit,
   CekSaldo,
-  CekToken,
-  webhook,
+  Webhook,
   cekAPILayer,
 } = require("../controller/controllerUser");
 
 router.post("/register", RegisterUser);
 router.post("/login", LoginUser);
 
-router.get("/apihit", CekToken, CekApihit);
-router.get("/saldo", CekToken, CekSaldo);
+router.get("/apihit", CekApihit);
+router.get("/saldo", CekSaldo);
 
-router.put("/saldo/topup", CekToken, TopupSaldo);
-router.put("/apihit/topup", CekToken, TopupApihit);
+router.put("/saldo/topup", TopupSaldo);
+router.put("/apihit/topup", TopupApihit);
 
-router.post("/webhook", webhook);
+router.post("/webhook", Webhook);
 
 router.get("/", cekAPILayer);
 
