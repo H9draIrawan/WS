@@ -5,7 +5,6 @@ const Nanoid = require("nanoid");
 const PDFDocument = require("pdfkit-table");
 const fs = require("fs");
 const db = require("../models/index");
-const { Model } = require("sequelize");
 
 async function HitInvoice(req, res, next) {
   const CekToken = Joi.string().empty().required().messages({
@@ -69,6 +68,12 @@ const ListInvoices = async (req, res) => {
         model: db.items,
         attributes: ["id", "name", "qty", "price"],
       },
+      {
+        model: db.users,
+        where: {
+          id: req.user,
+        },
+      },
     ],
   });
   let data = [];
@@ -95,6 +100,12 @@ const GetSingleInvoice = async (req, res) => {
       {
         model: db.items,
         attributes: ["id", "name", "qty", "price"],
+      },
+      {
+        model: db.users,
+        where: {
+          id: req.user,
+        },
       },
     ],
   });
@@ -134,6 +145,9 @@ const CreateInvoice = async (req, res) => {
   } catch (err) {
     return res.status(400).send({ message: err.message });
   }
+
+  if (!req.file)
+    return res.status(400).send({ message: "LOGO is a required field" });
   const { name, address, customer } = req.body;
   const id = await generateIDInvoice();
   const userId = req.user;
@@ -160,29 +174,8 @@ const CreateInvoice = async (req, res) => {
 };
 const UpdateInvoice = async (req, res) => {
   const id = req.params.invoiceId;
-  const schema = Joi.object({
-    name: Joi.string().empty().required().messages({
-      "any.required": "name is a required field",
-      "string.empty": "name cannot be an empty field",
-    }),
-    address: Joi.string().empty().required().messages({
-      "any.required": "address is a required field",
-      "string.empty": "address cannot be an empty field",
-    }),
-    customer: Joi.string().empty().required().messages({
-      "any.required": "customer is a required field",
-      "string.empty": "customer cannot be an empty field",
-    }),
-  });
-
-  try {
-    await schema.validateAsync(req.body);
-  } catch (err) {
-    return res.status(400).send({ message: err.message });
-  }
   const { name, address, customer } = req.body;
 
-  const User = await db.users.findByPk(req.user);
   const Invoice = await db.invoices.findByPk(id);
 
   if (!Invoice)
@@ -197,13 +190,15 @@ const UpdateInvoice = async (req, res) => {
     console.log("File deleted successfully.");
   });
 
-  Invoice.name = name;
-  Invoice.address = address;
-  Invoice.customer = customer;
-  Invoice.logo = req.file.path;
+  Invoice.name = name ? name : Invoice.name;
+  Invoice.address = address ? address : Invoice.address;
+  Invoice.customer = customer ? customer : Invoice.customer;
+  Invoice.logo = req.file ? req.file.path : filePath;
   Invoice.updatedAt = new Date();
-  Invoice.save();
+  await Invoice.save();
+  console.log(req.file.path);
 
+  const User = await db.users.findByPk(req.user);
   User.apiHit--;
   User.updatedAt = new Date();
   User.save();
