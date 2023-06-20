@@ -233,20 +233,20 @@ const TopupSaldo = async (req, res) => {
     let date = new Date().toLocaleDateString().split("/").join("");
     let uniqueSuffix = Math.floor(10000 + Math.random() * 90000); // 5 digit angka random
 
-    const response = await Axios.get(
-      `https://api.apilayer.com/tax_data/price?amount=${saldo}&country=ID`,
-      {
-        headers: {
-          apiKey: process.env.APILayerTax,
-        },
-      }
-    );
+    // const response = await Axios.get(
+    //   `https://api.apilayer.com/tax_data/price?amount=${saldo}&country=ID`,
+    //   {
+    //     headers: {
+    //       apiKey: process.env.APILayerTax,
+    //     },
+    //   }
+    // );
 
-    const incl_vat = response.data.price_incl_vat;
+    // const incl_vat = response.data.price_incl_vat;
 
     const transaction_details = {
       order_id: `order-${date}-${uniqueSuffix}`,
-      gross_amount: saldo,
+      gross_amount: parseInt(saldo) + 2500,
     };
 
     const transaction = await coreApi.charge({
@@ -271,14 +271,12 @@ const TopupSaldo = async (req, res) => {
       amount: saldo,
     });
 
-    const selisih = parseInt(incl_vat) - parseInt(saldo);
-
     return res.status(200).send({
       order_id: transaction.order_id,
       "BCA Virtual Account Number": va_number,
       Saldo: parseInt(saldo),
-      "Tax 11%": selisih,
-      Total: parseInt(incl_vat),
+      Tax: 2500,
+      Total: parseInt(saldo) + 2500,
     });
   } catch (error) {
     return res.status(400).send({ message: error.message });
@@ -448,13 +446,7 @@ const cekStatus = async (order_id) => {
 };
 
 const Webhook = async (req, res) => {
-  console.log("Masuk Webhook");
   await cekStatus(order_id);
-
-  if (status == "pending") {
-    console.log("Masih Pending");
-  }
-
   const T = await db.transactions.findOne({
     where: {
       id: order_id,
@@ -468,14 +460,6 @@ const Webhook = async (req, res) => {
           id: T.userId,
         },
       });
-
-      // console.log("User.saldo: " + User.saldo + " || " + typeof User.saldo);
-      // console.log(
-      //   "gross_amount: " + gross_amount + " || " + typeof gross_amount
-      // );
-      // console.log("User.saldo + gross_amount: " + User.saldo + gross_amount);
-
-      // gross_amount = parseInt(gross_amount);
 
       const u = await db.users.update(
         {
@@ -504,7 +488,6 @@ const Webhook = async (req, res) => {
       });
     }
   } else {
-    // console.log("Masuk Else");
     return res.status(400).send({
       message: `Topup saldo Rp.${gross_amount} Failed`,
     });

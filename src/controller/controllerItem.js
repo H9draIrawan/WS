@@ -52,7 +52,7 @@ async function HitItem(req, res, next) {
     },
   });
 
-  if (!User) return res.status(404).send({ message: "x-api-key not found" });
+  if (!User) return res.status(404).send({ message: "Invalid API Key" });
   if (User.apiHit <= 0)
     return res.status(404).send({ message: "apiHit not enough" });
 
@@ -63,11 +63,25 @@ async function HitItem(req, res, next) {
 const Additem = async (req, res) => {
   const id = req.params.invoiceId;
   const Invoice = await db.invoices.findByPk(id);
-  if (!Invoice) return res.status(400).send({ message: "Invalid invoiceId" });
+  if (!Invoice) return res.status(400).send({ message: "Invalid invoice ID" });
 
+  // const temp = req.body;
+
+  // temp is json
   const temp = req.body;
+
   if (Array.isArray(temp)) {
     for (let i = 0; i < temp.length; i++) {
+      if (
+        !temp[i].name ||
+        !temp[i].qty ||
+        !temp[i].price ||
+        temp[i].qty <= 0 ||
+        temp[i].price <= 0
+      ) {
+        return res.status(400).send({ message: "Invalid item 2" });
+      }
+
       const twins = await db.items.findOne({
         where: {
           name: temp[i].name,
