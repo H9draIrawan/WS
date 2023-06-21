@@ -33,7 +33,7 @@ async function HitItem(req, res, next) {
     await CekLogin.validateAsync(req.header("x-auth-token"));
     await CekApiKey.validateAsync(req.header("x-api-key"));
   } catch (err) {
-    return res.status(400).send({ message: err });
+    return res.status(400).send({ message: err.message });
   }
 
   try {
