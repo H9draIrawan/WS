@@ -65,10 +65,39 @@ const Additem = async (req, res) => {
   const Invoice = await db.invoices.findByPk(id);
   if (!Invoice) return res.status(400).send({ message: "Invalid invoice ID" });
 
-  // const temp = req.body;
-
-  // temp is json
   const temp = req.body;
+
+  const Item = await db.items.findAll({
+    where: {
+      invoiceId: id,
+    },
+  });
+
+  if (Item.length > 0) {
+    for (let i = 0; i < Item.length; i++) {
+      if (Array.isArray(temp)) {
+        for (let j = 0; j < temp.length; j++) {
+          if (Item[i].name == temp[j].name) {
+            return res.status(400).send({
+              message:
+                "Item dengan nama " +
+                Item[i].name +
+                " sudah ada di dalam invoice",
+            });
+          }
+        }
+      } else {
+        if (Item[i].name == temp.name) {
+          return res.status(400).send({
+            message:
+              "Item dengan nama " +
+              Item[i].name +
+              " sudah ada di dalam invoice",
+          });
+        }
+      }
+    }
+  }
 
   if (Array.isArray(temp)) {
     for (let i = 0; i < temp.length; i++) {
@@ -79,7 +108,7 @@ const Additem = async (req, res) => {
         temp[i].qty <= 0 ||
         temp[i].price <= 0
       ) {
-        return res.status(400).send({ message: "Invalid item 2" });
+        return res.status(400).send({ message: "Invalid item" });
       }
 
       const twins = await db.items.findOne({

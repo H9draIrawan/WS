@@ -57,8 +57,7 @@ const upload = multer({
 
 router.get("/", HitInvoice, ListInvoices);
 router.get("/:invoiceId", HitInvoice, GetSingleInvoice);
-router.get("/print/:invoiceId", HitInvoice, PrintInvoice);
-// router.post("/", [HitInvoice, upload.single("LOGO")], CreateInvoice);
+router.get("/print/:invoiceId/:template", HitInvoice, PrintInvoice);
 router.post("/", [
   HitInvoice,
   upload.single("LOGO"),

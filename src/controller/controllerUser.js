@@ -5,6 +5,8 @@ const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv").config();
 const nodemailer = require("nodemailer");
 
+const rateLimit = require("express-rate-limit");
+
 const db = require("../models/index");
 
 const midtransClient = require("midtrans-client");

@@ -6,6 +6,10 @@ const PDFDocument = require("pdfkit-table");
 const fs = require("fs");
 const db = require("../models/index");
 
+const nodemailer = require("nodemailer");
+
+const path = require("path");
+
 const pdfkit = require("pdfkit");
 
 async function HitInvoice(req, res, next) {
@@ -53,7 +57,7 @@ function numberWithCommas(x) {
 }
 
 async function generateIDInvoice() {
-  const id = "INV-" + Nanoid.nanoid(5);
+  const id = "INV-" + Nanoid.nanoid(5).toUpperCase();
   const check = await db.invoices.findOne({
     where: {
       id,
@@ -75,13 +79,6 @@ async function templateInvoice1(id_invoice, res) {
       },
     ],
   });
-
-  // let img = "";
-
-  // if (Invoice.logo) {
-  //   const ext = Invoice.logo.split(".").pop();
-  //   img = "data:image/" + ext + ";base64," + Invoice.logo;
-  // }
 
   let img = Invoice.logo;
 
@@ -170,12 +167,6 @@ async function templateInvoice1(id_invoice, res) {
     .moveTo(50, 240)
     .lineTo(550, 240)
     .stroke();
-
-  // doc.fillColor("#444444").fontSize(10).text("1", 50, 250);
-  // doc.fillColor("#444444").fontSize(10).text("Kursi", 100, 250);
-  // doc.fillColor("#444444").fontSize(10).text("1", 280, 250);
-  // doc.fillColor("#444444").fontSize(10).text("Rp. 250.000", 380, 250);
-  // doc.fillColor("#444444").fontSize(10).text("Rp. 250.000", 480, 250);
 
   let i = 0;
   let y = 0;
@@ -293,16 +284,49 @@ async function templateInvoice1(id_invoice, res) {
       355 + y
     );
 
-  // doc
-  //   .strokeColor("#aaaaaa")
-  //   .lineWidth(1)
-  //   .moveTo(50, 280 + y)
-  //   .lineTo(550, 280 + y)
-  //   .stroke();
   doc.end();
 
-  doc.pipe(fs.createWriteStream("invoice2.pdf"));
-  doc.pipe(res);
+  const dirPath = path.join(__dirname, "../../InvoiceOutput");
+  const filePath = path.join(dirPath, `invoice_${Invoice.id}.pdf`);
+
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath);
+  }
+
+  doc.pipe(fs.createWriteStream(filePath));
+
+  console.log("PDF Generated");
+
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    host: "smtp.gmail.com",
+    auth: {
+      user: "webserviceprojectistts@gmail.com",
+      pass: "jxdhirmfoednwxga",
+    },
+  });
+
+  const mailOptions = {
+    from: "WS-Project",
+    to: getUser.email,
+    subject: `Pembayaran Berhasil - Invoice #${Invoice.id}`,
+    text: "Terlampir bukti pembayaran Anda telah diterima",
+    attachments: [
+      {
+        filename: `invoice_${Invoice.id}.pdf`,
+        path: filePath,
+        contentType: "application/pdf",
+      },
+    ],
+  };
+
+  transporter.sendMail(mailOptions, (err, info) => {
+    if (err) {
+      console.log(err);
+    } else {
+      console.log("Email sent: " + info.response);
+    }
+  });
 }
 
 async function templateInvoice2(id_invoice, res) {
@@ -414,6 +438,7 @@ async function templateInvoice2(id_invoice, res) {
     .catch((error) => {
       console.error(error);
     });
+
   tabletotal.rows.push(["", "PPn 11 %", PPn]);
   tabletotal.rows.push(["", "Total", Result]);
   const doc = new PDFDocument();
@@ -469,8 +494,50 @@ async function templateInvoice2(id_invoice, res) {
   doc
     .fontSize(10)
     .text("The company will not be responsible for any damage or loss");
-  doc.pipe(res);
+
   doc.end();
+
+  const dirPath = path.join(__dirname, "../../InvoiceOutput");
+  const filePath = path.join(dirPath, `invoice_${Invoice.id}.pdf`);
+
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath);
+  }
+
+  doc.pipe(fs.createWriteStream(filePath));
+
+  console.log("PDF Generated");
+
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    host: "smtp.gmail.com",
+    auth: {
+      user: "webserviceprojectistts@gmail.com",
+      pass: "jxdhirmfoednwxga",
+    },
+  });
+
+  const mailOptions = {
+    from: "WS-Project",
+    to: getUser.email,
+    subject: `Pembayaran Berhasil - Invoice #${Invoice.id}`,
+    text: "Terlampir bukti pembayaran Anda telah diterima",
+    attachments: [
+      {
+        filename: `invoice_${Invoice.id}.pdf`,
+        path: filePath,
+        contentType: "application/pdf",
+      },
+    ],
+  };
+
+  transporter.sendMail(mailOptions, (err, info) => {
+    if (err) {
+      console.log(err);
+    } else {
+      console.log("Email sent: " + info.response);
+    }
+  });
 }
 
 async function templateInvoice3(id_invoice, res) {
@@ -483,20 +550,13 @@ async function templateInvoice3(id_invoice, res) {
     ],
   });
 
-  // let img = "";
-
-  // if (Invoice.logo) {
-  //   const ext = Invoice.logo.split(".").pop();
-  //   img = "data:image/" + ext + ";base64," + Invoice.logo;
-  // }
-
   let img = Invoice.logo;
 
   let doc = new pdfkit({ size: "A4", margin: 50 });
-  doc.rect(0, 0, doc.page.width, doc.page.height).fill("#90ee90");
+  doc.rect(0, 0, doc.page.width, doc.page.height).fill("#fff");
   doc.fontSize(15);
   doc.font("Helvetica-Bold");
-  doc.image(img, 50, 20, { width: 120 });
+  doc.image(img, 50, 20, { width: 110 });
 
   doc
     .fillColor("#444444")
@@ -506,9 +566,7 @@ async function templateInvoice3(id_invoice, res) {
     .text(Invoice.address, 100, 100, { align: "right" })
     .moveDown();
 
-  doc
-    .rect(50, 160, 500, 25)
-    .fill("#ff0000")
+  doc.rect(48, 160, 502, 25).fill("#ff0000");
 
   doc.fillColor("#ffffff").fontSize(10).text("No", 50, 170);
   doc.fillColor("#ffffff").fontSize(10).text("Nama Barang", 100, 170);
@@ -575,7 +633,7 @@ async function templateInvoice3(id_invoice, res) {
 
   let selisih = parseInt(response.data.price_incl_vat) - total;
 
-  doc.rect(370, 200 + y, 180, 40).fill("#3944bc");
+  doc.roundedRect(370, 200 + y, 180, 40).fill("#3944bc");
 
   doc
     .fillColor("#ffffff")
@@ -674,16 +732,49 @@ async function templateInvoice3(id_invoice, res) {
       365 + y
     );
 
-  // doc
-  //   .strokeColor("#aaaaaa")
-  //   .lineWidth(1)
-  //   .moveTo(50, 280 + y)
-  //   .lineTo(550, 280 + y)
-  //   .stroke();
   doc.end();
 
-  doc.pipe(fs.createWriteStream("invoice3.pdf"));
-  doc.pipe(res);
+  const dirPath = path.join(__dirname, "../../InvoiceOutput");
+  const filePath = path.join(dirPath, `invoice_${Invoice.id}.pdf`);
+
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath);
+  }
+
+  doc.pipe(fs.createWriteStream(filePath));
+
+  console.log("PDF Generated");
+
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    host: "smtp.gmail.com",
+    auth: {
+      user: "webserviceprojectistts@gmail.com",
+      pass: "jxdhirmfoednwxga",
+    },
+  });
+
+  const mailOptions = {
+    from: "WS-Project",
+    to: getUser.email,
+    subject: `Pembayaran Berhasil - Invoice #${Invoice.id}`,
+    text: "Terlampir bukti pembayaran Anda telah diterima",
+    attachments: [
+      {
+        filename: `invoice_${Invoice.id}.pdf`,
+        path: filePath,
+        contentType: "application/pdf",
+      },
+    ],
+  };
+
+  transporter.sendMail(mailOptions, (err, info) => {
+    if (err) {
+      console.log(err);
+    } else {
+      console.log("Email sent: " + info.response);
+    }
+  });
 }
 
 const ListInvoices = async (req, res) => {
@@ -821,7 +912,6 @@ const UpdateInvoice = async (req, res) => {
   Invoice.logo = req.file ? req.file.path : filePath;
   Invoice.updatedAt = new Date();
   await Invoice.save();
-  console.log(req.file.path);
 
   const User = await db.users.findByPk(req.user);
   User.apiHit--;
@@ -865,17 +955,64 @@ const DeleteInvoice = async (req, res) => {
 };
 const PrintInvoice = async (req, res) => {
   const Invoice = await db.invoices.findByPk(req.params.invoiceId);
+
   if (!Invoice)
     return res.status(404).send({ message: "Invoice is not found" });
 
-  // templateInvoice1(Invoice.id, res);
-  // templateInvoice2(Invoice.id, res);
-  templateInvoice3(Invoice.id, res);
+  const { template } = req.params;
 
-  const User = await db.users.findByPk(req.user);
-  User.apiHit--;
-  User.updatedAt = new Date();
-  User.save();
+  const templateJoi = Joi.number().min(1).max(3).required().messages({
+    "any.required": "template is a required field",
+    "number.base": "template harus berupa angka",
+    "number.min": "template harus antara 1, 2, atau 3",
+    "number.max": "template harus antara 1, 2, atau 3",
+  });
+
+  try {
+    await templateJoi.validateAsync(template);
+
+    if (template == 1) {
+      await templateInvoice1(Invoice.id, res);
+
+      const User = await db.users.findByPk(req.user);
+      User.apiHit--;
+      User.updatedAt = new Date();
+      User.save();
+
+      return res.status(200).send({
+        message: "Invoice has been printed and already sent to Customer email",
+      });
+    } else if (template == 2) {
+      await templateInvoice2(Invoice.id, res);
+
+      const User = await db.users.findByPk(req.user);
+      User.apiHit--;
+      User.updatedAt = new Date();
+      User.save();
+
+      return res.status(200).send({
+        message: "Invoice has been printed and already sent to Customer email",
+      });
+    } else if (template == 3) {
+      await templateInvoice3(Invoice.id, res);
+
+      const User = await db.users.findByPk(req.user);
+      User.apiHit--;
+      User.updatedAt = new Date();
+      User.save();
+
+      return res.status(200).send({
+        message: "Invoice has been printed and already sent to Customer email",
+      });
+    } else {
+      return res
+        .status(400)
+        .send({ message: "template harus antara 1, 2, atau 3" });
+    }
+  } catch (error) {
+    console.log(error);
+    return res.status(400).send({ message: error.message });
+  }
 };
 
 module.exports = {
