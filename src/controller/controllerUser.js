@@ -332,8 +332,8 @@ const TopupApihit = async (req, res) => {
 
   try {
     await schema.validateAsync(req.body.apihit);
-    User.saldo -= apihit * 3200;
-    User.apiHit += apihit;
+    User.saldo -= parseInt(apihit * 3200);
+    User.apiHit += parseInt(apihit);
     User.updatedAt = new Date();
     if (User.saldo < 0)
       return res.status(400).send({ message: "Saldo not enough" });
@@ -381,7 +381,7 @@ const CekSaldo = async (req, res) => {
     });
   }
 
-  return res.status(400).send({
+  return res.status(200).send({
     message: `Remaining Saldo Rp.${User.saldo}`,
   });
 };
@@ -423,7 +423,7 @@ const CekApihit = async (req, res) => {
     });
   }
 
-  return res.status(400).send({
+  return res.status(200).send({
     message: `Remaining Apihit ${User.apiHit}`,
   });
 };
@@ -465,7 +465,7 @@ const Webhook = async (req, res) => {
 
       const u = await db.users.update(
         {
-          saldo: User.saldo + gross_amount,
+          saldo: User.saldo + parseInt(gross_amount),
         },
         {
           where: {

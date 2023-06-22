@@ -36,8 +36,9 @@ async function HitItem(req, res, next) {
     return res.status(400).send({ message: err.message });
   }
 
+  let checking = "";
   try {
-    const checking = jwt.verify(
+    checking = jwt.verify(
       req.header("x-auth-token"),
       process.env.JWT_Secret_Key
     );
@@ -53,6 +54,11 @@ async function HitItem(req, res, next) {
   });
 
   if (!User) return res.status(404).send({ message: "Invalid API Key" });
+  if (checking.email !== User.email) {
+    return res.status(400).json({
+      message: "API Key or Token is not valid",
+    });
+  }
   if (User.apiHit <= 0)
     return res.status(404).send({ message: "apiHit not enough" });
 
@@ -62,42 +68,18 @@ async function HitItem(req, res, next) {
 
 const Additem = async (req, res) => {
   const id = req.params.invoiceId;
-  const Invoice = await db.invoices.findByPk(id);
-  if (!Invoice) return res.status(400).send({ message: "Invalid invoice ID" });
-
-  const temp = req.body;
-
-  const Item = await db.items.findAll({
+  const Invoice = await db.invoices.findOne({
     where: {
-      invoiceId: id,
+      id: id,
+      userId: req.user,
     },
   });
+  if (!Invoice) return res.status(400).send({ message: "Invalid invoice ID" });
 
-  if (Item.length > 0) {
-    for (let i = 0; i < Item.length; i++) {
-      if (Array.isArray(temp)) {
-        for (let j = 0; j < temp.length; j++) {
-          if (Item[i].name == temp[j].name) {
-            return res.status(400).send({
-              message:
-                "Item dengan nama " +
-                Item[i].name +
-                " sudah ada di dalam invoice",
-            });
-          }
-        }
-      } else {
-        if (Item[i].name == temp.name) {
-          return res.status(400).send({
-            message:
-              "Item dengan nama " +
-              Item[i].name +
-              " sudah ada di dalam invoice",
-          });
-        }
-      }
-    }
-  }
+  // const temp = req.body;
+
+  // temp is json
+  const temp = req.body;
 
   if (Array.isArray(temp)) {
     for (let i = 0; i < temp.length; i++) {
@@ -151,6 +133,15 @@ const Additem = async (req, res) => {
   return res.status(201).send({ message: "Item has been added" });
 };
 const Updateitem = async (req, res) => {
+  const id = req.params.invoiceId;
+  const Invoice = await db.invoices.findOne({
+    where: {
+      id: id,
+      userId: req.user,
+    },
+  });
+  if (!Invoice) return res.status(400).send({ message: "Invalid invoice ID" });
+
   const schema = Joi.object({
     name: Joi.string().empty().required().messages({
       "any.required": "name is a required field",
@@ -180,6 +171,7 @@ const Updateitem = async (req, res) => {
       name: {
         [Op.like]: `%${name}%`,
       },
+      invoiceId: Invoice.id,
     },
   });
   if (!Item) return res.status(404).send({ message: "Item is not found" });
@@ -201,6 +193,15 @@ const Updateitem = async (req, res) => {
   });
 };
 const Deleteitem = async (req, res) => {
+  const id = req.params.invoiceId;
+  const Invoice = await db.invoices.findOne({
+    where: {
+      id: id,
+      userId: req.user,
+    },
+  });
+  if (!Invoice) return res.status(400).send({ message: "Invalid invoice ID" });
+
   const schema = Joi.string().empty().required().messages({
     "any.required": "name is a required field",
     "string.empty": "name cannot be an empty field",
@@ -217,6 +218,7 @@ const Deleteitem = async (req, res) => {
       name: {
         [Op.like]: `%${name}%`,
       },
+      invoiceId: Invoice.id,
     },
   });
   if (!Item) return res.status(404).send({ message: "Item is not found" });

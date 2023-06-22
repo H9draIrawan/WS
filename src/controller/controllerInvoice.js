@@ -28,8 +28,9 @@ async function HitInvoice(req, res, next) {
     return res.status(400).send({ message: err });
   }
 
+  let checking = "";
   try {
-    const checking = jwt.verify(
+    checking = jwt.verify(
       req.header("x-auth-token"),
       process.env.JWT_Secret_Key
     );
@@ -45,6 +46,11 @@ async function HitInvoice(req, res, next) {
   });
 
   if (!User) return res.status(404).send({ message: "x-api-key not found" });
+  if (checking.email !== User.email) {
+    return res.status(400).json({
+      message: "API Key or Token is not valid",
+    });
+  }
   if (User.apiHit <= 0)
     return res.status(404).send({ message: "apiHit not enough" });
 
