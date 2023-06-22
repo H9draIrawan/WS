@@ -496,23 +496,6 @@ const Webhook = async (req, res) => {
   }
 };
 
-const cekAPILayer = async (req, res) => {
-  const response = await Axios.get(
-    "https://api.apilayer.com/tax_data/price?amount=150000&country=ID",
-    {
-      headers: {
-        apiKey: process.env.APILayerTax,
-      },
-    }
-  );
-
-  console.log(response.data);
-
-  return res.status(200).send({
-    message: response.data,
-  });
-};
-
 module.exports = {
   RegisterUser,
   LoginUser,
@@ -521,5 +504,4 @@ module.exports = {
   CekSaldo,
   CekApihit,
   Webhook,
-  cekAPILayer,
 };

@@ -23,6 +23,4 @@ router.put("/apihit/topup", TopupApihit);
 
 router.post("/webhook", Webhook);
 
-router.get("/", cekAPILayer);
-
 module.exports = router;
