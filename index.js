@@ -13,7 +13,7 @@ const limiter = rateLimit({
 express.urlencoded({ extended: true });
 express.json();
 
-app.use(limiter);
+// app.use(limiter);
 
 const router = require("./src/router/router");
 

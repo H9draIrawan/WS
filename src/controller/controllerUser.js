@@ -428,30 +428,30 @@ const CekApihit = async (req, res) => {
   });
 };
 
-let status = "";
 let gross_amount = 0;
-const cekStatus = async (order_id) => {
-  await Axios.get(`https://api.sandbox.midtrans.com/v2/${order_id}/status`, {
-    headers: {
-      Accept: "application/json",
-      authorization: `Basic ${btoa(process.env.MIDTRANS_SERVER_KEY)}`,
-    },
-  })
-    .then((response) => {
-      console.log(status, gross_amount);
-      status = response.data.transaction_status;
-      gross_amount = response.data.gross_amount;
-    })
-    .catch((error) => {
-      console.log(error);
-    });
-};
+// const cekStatus = async (order_id) => {
+//   await Axios.get(`https://api.sandbox.midtrans.com/v2/${order_id}/status`, {
+//     headers: {
+//       Accept: "application/json",
+//       authorization: `Basic ${btoa(process.env.MIDTRANS_SERVER_KEY)}`,
+//     },
+//   })
+//     .then((response) => {
+//       console.log(status, gross_amount);
+//       status = response.data.transaction_status;
+//       gross_amount = response.data.gross_amount;
+//     })
+//     .catch((error) => {
+//       console.log(error);
+//     });
+// };
 
 const Webhook = async (req, res) => {
-  await cekStatus(order_id);
+  let status = req.body.transaction_status;
+  console.log(status + " " + req.body.va_numbers[0].va_number);
   const T = await db.transactions.findOne({
     where: {
-      id: order_id,
+      id: req.body.order_id,
     },
   });
 
@@ -465,7 +465,7 @@ const Webhook = async (req, res) => {
 
       const u = await db.users.update(
         {
-          saldo: User.saldo + parseInt(gross_amount),
+          saldo: User.saldo + parseInt(req.body.gross_amount),
         },
         {
           where: {
@@ -480,18 +480,18 @@ const Webhook = async (req, res) => {
         },
         {
           where: {
-            id: order_id,
+            id: req.body.order_id,
           },
         }
       );
 
       return res.status(200).send({
-        message: `Topup saldo Rp.${gross_amount} Success`,
+        message: `Topup saldo Rp.${req.body.gross_amount - 2500} Success`,
       });
     }
   } else {
     return res.status(400).send({
-      message: `Topup saldo Rp.${gross_amount} Failed`,
+      message: `Topup saldo Rp.${req.body.gross_amount - 2500} Failed`,
     });
   }
 };
